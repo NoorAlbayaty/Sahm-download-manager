@@ -1,0 +1,35 @@
+name: Build Windows installer
+
+on:
+  push:
+    branches: [main]          # every change: test build (download from the Actions tab)
+  release:
+    types: [published]        # publishing a release: build and attach the downloads to it
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+      - name: Build app, bundle video tools, build installer
+        run: python build.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sahm-downloads
+          path: |
+            dist/Sahm-Setup.exe
+            dist/Sahm-Portable.zip
+      - name: Attach downloads to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/Sahm-Setup.exe dist/Sahm-Portable.zip --clobber
